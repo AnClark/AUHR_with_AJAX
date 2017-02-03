@@ -1,0 +1,312 @@
+{% extends 'info/base.html' %}
+
+{% block content %}
+    <!--    引入弹出窗口控制程序  -->
+    <script src="{{ url_for('static', filename='js/popwindow.js') }}"></script>
+
+    <script>
+        function start_query(){
+            //TODO: 后期考虑用AJAX实现结果页内的搜索
+            var keyword = document.getElementById("keyword").value;
+            location.href="/info/query_result?key=" + keyword;
+        }
+
+        function show_person_info_window(person_id){
+            var idx_for_query={};
+            idx_for_query['idx']=person_id;
+            
+            $.ajax({
+                type: 'POST',
+                url: '/info/query_person',
+                data: idx_for_query,
+                dataType: 'json',
+                success: function(data){
+                    /** 
+                     * 对不同的用户，采用不同的加载策略
+                     *  ■高级用户：操作的是表单
+                     *  ■普通用户：操作的是不可写的标签
+                     **/
+                    {% if isPremiumUser == True %}
+                            $('#idx').val(data.result['id'])
+                            $('#Name').val(data.result['Name']);
+                            $('#Mobile').val(data.result['Mobile']);
+                            $('#QQ').val(data.result['QQ']);
+                            $('#Grade').val(data.result['Grade']);
+                            $('#Faculty').val(data.result['Faculty']);
+                            $('#Class').val(data.result['Class']);
+                            $('#DormBuild').val(data.result['DormBuild']);
+                            $('#Department').val(data.result['Department']);
+                            $('#GroupInDepart').val(data.result['GroupInDepart']);
+                            $('#Occupation').val(data.result['Occupation']);
+                            $('#AUID').val(data.result['AUID']);
+        
+                            /** 对日期的单独处理 **/
+                            $('#Birthday').attr("value", UTC2StandardFormat(data.result['Birthday']));
+                            $('#ArrivalTime').attr("value", UTC2StandardFormat(data.result['ArrivalTime']));
+        
+                            /** 对性别的单独处理 **/
+                            switch(data.result['Gender']){
+                                case("男"):
+                                    document.getElementById("Gender-Male").checked = "checked";
+                                    break;
+                                case("女"):
+                                    document.getElementById("Gender-Female").checked = "checked";
+                                    break;
+                            }
+                    {% else %}
+                            $('#Name-readonly').html(data.result['Name']);
+                            $('#Gender-readonly').html(data.result['Gender']);
+                            $('#Mobile-readonly').html(data.result['Mobile']);
+                            $('#QQ-readonly').html(data.result['QQ']);
+                            $('#Grade-readonly').html(data.result['Grade']);
+                            $('#Faculty-readonly').html(data.result['Faculty']);
+                            $('#Class-readonly').html(data.result['Class']);
+                            $('#DormBuild-readonly').html(data.result['DormBuild']);
+                            $('#Department-readonly').html(data.result['Department']);
+                            $('#GroupInDepart-readonly').html(data.result['GroupInDepart']);
+                            $('#Occupation-readonly').html(data.result['Occupation']);
+                            $('#AUID-readonly').html(data.result['AUID']);
+
+                            /** 对日期的单独处理 **/
+                            $('#Birthday-readonly').html(UTC2StandardFormat(data.result['Birthday']));
+                            $('#ArrivalTime-readonly').html(UTC2StandardFormat(data.result['ArrivalTime']));
+                    {% endif %}
+
+                    /**
+                     * 所有信息从后台读取并显示完毕后，方打开个人信息窗口
+                     * 如此即可避免在打开窗口的那一瞬间出现信息显示延迟
+                     **/
+                    show_popup_window();
+                },
+                error: function (xhr, type) {
+                    alert("无法获取成员信息，请稍后再试！")
+                }
+            });
+
+        }
+
+    </script>
+    <script>
+            function submit_modify_person_info(person_id){
+                var modified_person_info={};
+                    modified_person_info['idx']=person_id;
+                    modified_person_info['Name']=$('#Name').val();
+                    modified_person_info['Gender']=$('#Gender').val();
+                    modified_person_info['Mobile']=$('#Mobile').val();
+                    modified_person_info['QQ']=$('#QQ').val();
+                    modified_person_info['Birthday']=$('#Birthday').val();
+                    modified_person_info['Grade']=$('#Grade').val();
+                    modified_person_info['Faculty']=$('#Faculty').val();
+                    modified_person_info['Class']=$('#Class').val();
+                    modified_person_info['DormBuild']=$('#DormBuild').val();
+                    modified_person_info['Department']=$('#Department').val();
+                    modified_person_info['GroupInDepart']=$('#GroupInDepart').val();
+                    modified_person_info['Occupation']=$('#Occupation').val();
+                    modified_person_info['AUID']=$('#AUID').val();
+                    modified_person_info['ArrivalTime']=$('#ArrivalTime').val();
+
+                $.ajax({
+                    type: 'POST',
+                    url: '/info/submit_modified_person',
+                    data: modified_person_info,
+                    dataType: 'json',
+                    success: function(data){
+                        if(data.result['OK'] == true){
+                            alert("个人信息修改成功！\n 目标成员：" + data.result['changed_who']);
+                        }
+                        else{
+                            alert("修改失败，个人信息维持原样。。。\n 错误信息：" + data.result['errmsg']);
+                        }
+                        hide_popup_window();
+
+                        /** 刷新页面，使得我们能看到更改 **/
+                        location.href = document.URL;
+
+                    },
+                    error: function(xhr, type){
+                        alert("系统异常。。。个人信息修改出错！");
+                        hide_popup_window();
+                    }
+                })
+        }
+    </script>
+
+    <!--  TODO:前置工具栏  -->
+    <div class="query-header">
+        <div class="query-header-column">
+            <span style="font-size: 30px">关键字查询</span>
+        </div>
+        <div class="query-header-column">
+
+            <div id="searchbar">
+                <span>关键字：</span>
+                <input type="text" id="keyword">
+                <input type="button" id="start-query" value="查询" onclick="start_query()">
+            </div>
+
+        </div>
+        <div class="query-header-clear"></div>
+    </div>
+
+    <div class="result-container">
+        <!--    TODO:打印表头    -->
+        <table id="result-table" class="result-table" border="1">
+            <tr class="result-table-header">
+                <th>姓名</th>
+                <th>年级</th>
+                <th>所在部门</th>
+                <th>职务</th>
+                <th>手机</th>
+                <th>QQ</th>
+            </tr>
+
+            {% if result_assembly == False %}
+                <tr class="result-not-found-error-line">
+                    <td style="font-size: 60px" colspan="6">
+                        未查询到关键字：{{ keyword }}
+                    </td>
+                </tr>
+
+            {% else %}
+                    {% for result in result_assembly %}
+                            <tr id="{{ result['Name'] }}" class="result-table-line" onclick="show_person_info_window('{{ result['id'] }}')">
+                                    <td id="result-Name">
+                                        {{ result['Name'] }}
+                                    </td>
+                                    <td id="result-Grade">
+                                        {{ result['Grade'] }}
+                                    </td>
+                                    <td id="result-Department">
+                                        {{ result['Department'] }}
+                                    </td>
+                                    <td id="result-Occupation">
+                                        {{ result['Occupation'] }}
+                                    </td>
+                                    <td id="result-Mobile">
+                                        {{ result['Mobile'] }}
+                                    </td>
+                                    <td id="result-QQ">
+                                        {{ result['QQ'] }}
+                                    </td>
+                            </tr>
+                    {% endfor %}
+            {% endif %}
+
+        </table>
+
+
+
+    </div>
+
+    <!--    人员详细信息的弹出窗口 -->
+    <div class="background-shade" id="shader" onclick="hide_popup_window()"></div>
+    <div class="popup-window" id="popup-window">
+        <div class="popup-window-title">
+            <span>个人信息</span>
+            <span class="close-button" onclick="hide_popup_window()">[关闭]</span>
+        </div>
+        <div class="popup-window-body">
+
+            {% if isPremiumUser == True %}
+                    <form id="modify-person-info" name="modify-person-info" action="" method="post">
+                        <!-- idx 是一个标志空间，存放的是个人信息的唯一索引——ID。
+                                    展现个人信息时，要调取其中的值 -->
+                        <input type="text" name="idx" id="idx" hidden>
+                        <span>姓名</span>
+                            <input type="text" name="Name" id="Name"> <br>
+                        <span>性别</span>
+                            <input type="radio" name="Gender" id="Gender-Male">男
+                            <input type="radio" name="Gender" id="Gender-Female">女
+                            <br>
+                        <span>手机</span>
+                            <input type="text" name="Mobile" id="Mobile"><br>
+                        <span>QQ</span>
+                            <input type="text" name="QQ" id="QQ"><br>
+                        <span>生日</span>
+                            <input type="date" name="Birthday" id="Birthday"><br>
+                        <span>年级</span>
+                            <input type="text" name="Grade" id="Grade"><br>
+                        <span>院系</span>
+                            <input type="text" name="Faculty" id="Faculty"><br>
+                        <span>班级</span>
+                            <input type="text" name="Class" id="Class"><br>
+                        <span>寝室楼栋</span>
+                            <input type="text" name="DormBuild" id="DormBuild"><br>
+                        <span>所在社联部门</span>
+                            <input type="text" name="Department" id="Department"><br>
+                        <span>部门内分组</span>
+                            <input type="text" name="GroupInDepart" id="GroupInDepart"><br>
+                        <span>职务</span>
+                            <input type="text" name="Occupation" id="Occupation"><br>
+                        <span>社联编号</span>
+                            <input type="text" name="AUID" id="AUID"><br>
+                        <span>加入社联的时间</span>
+                            <input type="date" name="ArrivalTime" id="ArrivalTime"><br>
+                        <!--    “提交更改”按钮    -->
+                        <input type="button" id="submit-form" value="提交更改" onclick="submit_modify_person_info($('#idx').val())">
+                    </form>
+            {% else %}
+                        <table class="personinfo-container">
+                                <tr class="personinfo-line">
+                                    <td>姓名</td>
+                                    <td id="Name-readonly"></td>
+                                </tr>
+                                <tr class="personinfo-line">
+                                    <td>所在部门</td>
+                                    <td id="Department-readonly"></td>
+                                </tr>
+                                <tr class="personinfo-line">
+                                    <td>部门内分组</td>
+                                    <td id="GroupInDepart-readonly"></td>
+                                </tr>
+                                <tr class="personinfo-line">
+                                    <td>职务</td>
+                                    <td id="Occupation-readonly"></td>
+                                </tr>
+                                <tr class="personinfo-line">
+                                    <td>性别</td>
+                                    <td id="Gender-readonly"></td>
+                                </tr>
+                                <tr class="personinfo-line">
+                                    <td>手机号</td>
+                                    <td id="Mobile-readonly"></td>
+                                </tr>
+                                <tr class="personinfo-line">
+                                    <td>QQ</td>
+                                    <td id="QQ-readonly"></td>
+                                </tr>
+                                <tr class="personinfo-line">
+                                    <td>生日</td>
+                                    <td id="Birthday-readonly"></td>
+                                </tr>
+                                <tr class="personinfo-line">
+                                    <td>年级</td>
+                                    <td id="Grade-readonly"></td>
+                                </tr>
+                                <tr class="personinfo-line">
+                                    <td>专业</td>
+                                    <td id="Faculty-readonly"></td>
+                                </tr>
+                                <tr class="personinfo-line">
+                                    <td>班级</td>
+                                    <td id="Class-readonly"></td>
+                                </tr>
+                                <tr class="personinfo-line">
+                                    <td>寝室楼栋</td>
+                                    <td id="DormBuild-readonly"></td>
+                                </tr>
+                                <tr class="personinfo-line">
+                                    <td>社联编号</td>
+                                    <td id="AUID-readonly"></td>
+                                </tr>
+                                <tr class="personinfo-line">
+                                    <td>进入社联的时间</td>
+                                    <td id="ArrivalTime-readonly"></td>
+                                </tr>
+                    </table>
+            {% endif %}
+
+        </div>
+    </div>
+
+{% endblock %}

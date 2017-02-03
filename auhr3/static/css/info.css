@@ -1,0 +1,42 @@
+body
+{
+    font-family: 'Microsoft YaHei UI','微软雅黑','Arial';
+}
+
+
+.form-error
+{
+    color:red;
+    font-size:15px;
+    margin-left: 100px;
+}
+
+.form-indicator
+{
+	padding:8px 10px 8px 10px;
+    width: 200px;
+}
+
+
+
+.query-header
+{
+    position:relative;
+    width: 80%;
+    background-color: navajowhite;
+    padding: 15px 30px;
+
+    margin-bottom: 20px;
+}
+
+.query-header-column
+{
+    position:relative;
+    width: 50%;
+    float: left;
+}
+
+.query-header-clear
+{
+    clear: both;
+}
